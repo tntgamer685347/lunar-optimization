@@ -3,5 +3,3 @@ Lunar is a neural network aim assist that uses real-time object detection accele
 
 ## New-Features
 Lunar v2 adds an aiming option (key: t) to use the aimbot without aiming.
-
-(AI is for Fortnite)

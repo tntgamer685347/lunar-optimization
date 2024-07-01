@@ -59,6 +59,7 @@ if __name__ == "__main__":
 
     banner = pystyle.Colorate.Horizontal(pystyle.Colors.red_to_green, pystyle.Center.XCenter(banner))
     print(banner+"\n")
+    preset = input(f"Choose your preset: ")+".py"
 
     path_exists = os.path.exists("lib/config/config.json")
     if not path_exists or ("setup" in sys.argv):
@@ -68,7 +69,12 @@ if __name__ == "__main__":
     path_exists = os.path.exists("lib/data")
     if "collect_data" in sys.argv and not path_exists:
         os.makedirs("lib/data")
-    from lib.aimbot import Aimbot
+    if (preset.lower() == "aimbot.py"):
+        from lib.aimbot import Aimbot
+    elif (preset.lower() == "legit.py"):
+        from lib.legit import Aimbot
+    elif (preset.lower() == "smooth.py"):
+        from lib.smooth import Aimbot
     listener = keyboard.Listener(on_release=on_release)
     listener.start()
     main()

@@ -51,16 +51,15 @@ class Aimbot:
     extra = ctypes.c_ulong(0)
     ii_ = Input_I()
     screen = mss.mss()
-    pixel_increment = 2 #controls how many pixels the mouse moves for each relative movement
+    pixel_increment = 0.5 #controls how many pixels the mouse moves for each relative movement
     with open("lib/config/config.json") as f:
         sens_config = json.load(f)
     aimbot_status = "ENABLED"
 
-    def __init__(self, box_constant = 416, collect_data = False, mouse_delay = 0.0001, debug = False):
+    def __init__(self, box_constant = 416, collect_data = False, mouse_delay = 0.0000001, debug = False):
         #controls the initial centered box width and height of the "Lunar Vision" window
         self.box_constant = box_constant #controls the size of the detection box (equaling the width and height)
 
-        print("[INFO] Loading the neural network model")
         self.model = torch.hub.load('ultralytics/yolov5', 'custom', path='lib/best.pt', force_reload = True)
         if torch.cuda.is_available():
             #print(colored("CUDA ACCELERATION [ENABLED]", "green"))
@@ -73,7 +72,7 @@ class Aimbot:
         self.model.conf = 0.45 # base confidence threshold (or base detection (0-1)
         self.model.iou = 0.45 # NMS IoU (0-1)
         self.collect_data = collect_data
-        self.mouse_delay = 0.00001
+        self.mouse_delay = 0.0000001
         self.debug = debug
 
         #print("\n[INFO] PRESS 'F1' TO TOGGLE AIMBOT\n[INFO] PRESS 'F2' TO QUIT")
