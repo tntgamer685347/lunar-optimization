@@ -18,18 +18,11 @@ pygame.init()
 
 screensize = {'X': ctypes.windll.user32.GetSystemMetrics(0), 'Y': ctypes.windll.user32.GetSystemMetrics(1)}
 
-# If you use stretched res, hardcode the X and Y. For example: screen_res_x = 1234
 screen_res_x = screensize['X']
 screen_res_y = screensize['Y']
 
-# Divide screen_res by 2
-# No need to change this
 screen_x = int(screen_res_x / 2)
 screen_y = int(screen_res_y / 2)
-
-aim_height = 7 # The lower the number, the higher the aim_height. For example: 2 would be the head and 100 would be the feet.
-
-use_trigger_bot = False # Will shoot if crosshair is locked on the player
 
 PUL = ctypes.POINTER(ctypes.c_ulong)
 class KeyBdInput(ctypes.Structure):
@@ -68,31 +61,25 @@ class Aimbot:
     extra = ctypes.c_ulong(0)
     ii_ = Input_I()
     screen = mss.mss()
-    pixel_increment = 1.5 #controls how many pixels the mouse moves for each relative movement
+    pixel_increment = 1.5 
     with open("lib/config/config.json") as f:
         sens_config = json.load(f)
     aimbot_status = "ENABLED"
 
     def __init__(self, box_constant = 416, collect_data = False, mouse_delay = 0.0000001, debug = False):
-        #controls the initial centered box width and height of the "Lunar Vision" window
         self.box_constant = box_constant #controls the size of the detection box (equaling the width and height)
 
         self.model = torch.hub.load('ultralytics/yolov5', 'custom', path='lib/best.pt', force_reload = True)
         if torch.cuda.is_available():
-            #print(colored("CUDA ACCELERATION [ENABLED]", "green"))
             pass
         else:
-            #print(colored("[!] CUDA ACCELERATION IS UNAVAILABLE", "red"))
-            #print(colored("[!] Check your PyTorch installation, else performance will be poor", "red"))
             pass
 
-        self.model.conf = 0.30 # base confidence threshold (or base detection (0-1)
-        self.model.iou = 0.45 # NMS IoU (0-1)
+        self.model.conf = 0.30
+        self.model.iou = 0.45 
         self.collect_data = collect_data
         self.mouse_delay = 0.0000001
         self.debug = debug
-
-        #print("\n[INFO] PRESS 'F1' TO TOGGLE AIMBOT\n[INFO] PRESS 'F2' TO QUIT")
 
     def update_status_aimbot():
         if Aimbot.aimbot_status == "ENABLED":
@@ -119,9 +106,9 @@ class Aimbot:
         print(message, end = "\r")
 
     def left_click():
-        ctypes.windll.user32.mouse_event(0x0002) #left mouse down
+        ctypes.windll.user32.mouse_event(0x0002)
         Aimbot.sleep(0.0001)
-        ctypes.windll.user32.mouse_event(0x0004) #left mouse up
+        ctypes.windll.user32.mouse_event(0x0004)
 
     def sleep(duration, get_now = time.perf_counter):
         if duration == 0: return
@@ -140,7 +127,6 @@ class Aimbot:
         return True if win32api.GetKeyState(0x02) in (-127, -128) else False
 
     def is_target_locked(x, y):
-        #plus/minus 5 pixel threshold
         threshold = 5
         return True if 960 - threshold <= x <= 960 + threshold and 540 - threshold <= y <= 540 + threshold else False
 
@@ -150,7 +136,7 @@ class Aimbot:
         elif Aimbot.is_targeted():
             scale = Aimbot.sens_config["targeting_scale"]
         else:
-            return #TODO
+            return
 
         if self.debug: start_time = time.perf_counter()
         for rel_x, rel_y in Aimbot.interpolate_coordinates_from_center((x, y), scale):
@@ -159,7 +145,6 @@ class Aimbot:
             ctypes.windll.user32.SendInput(1, ctypes.byref(input_obj), ctypes.sizeof(input_obj))
             if not self.debug: Aimbot.sleep(self.mouse_delay)
 
-    #generator yields pixel tuples for relative movement
     def interpolate_coordinates_from_center(absolute_coordinates, scale):
         diff_x = (absolute_coordinates[0] - 960) * scale/Aimbot.pixel_increment
         diff_y = (absolute_coordinates[1] - 540) * scale/Aimbot.pixel_increment
@@ -178,12 +163,12 @@ class Aimbot:
     def start(self):
         print("[INFO] Beginning screen capture")
         Aimbot.update_status_aimbot()
-        half_screen_width = ctypes.windll.user32.GetSystemMetrics(0)/2 #this should always be 960
-        half_screen_height = ctypes.windll.user32.GetSystemMetrics(1)/2 #this should always be 540
-        detection_box = {'left': int(half_screen_width - self.box_constant//2), #x1 coord (for top-left corner of the box)
-                          'top': int(half_screen_height - self.box_constant//2), #y1 coord (for top-left corner of the box)
-                          'width': int(self.box_constant),  #width of the box
-                          'height': int(self.box_constant)} #height of the box
+        half_screen_width = ctypes.windll.user32.GetSystemMetrics(0)/2 
+        half_screen_height = ctypes.windll.user32.GetSystemMetrics(1)/2 
+        detection_box = {'left': int(half_screen_width - self.box_constant//2),
+                          'top': int(half_screen_height - self.box_constant//2),
+                          'width': int(self.box_constant), 
+                          'height': int(self.box_constant)}
         if self.collect_data:
             collect_pause = 0
 
@@ -193,62 +178,44 @@ class Aimbot:
             if self.collect_data: orig_frame = np.copy((frame))
             results = self.model(frame)
 
-            if len(results.xyxy[0]) != 0: #player detected
+            if len(results.xyxy[0]) != 0:
                 least_crosshair_dist = closest_detection = player_in_frame = False
-                for *box, conf, cls in results.xyxy[0]: #iterate over each player detected
+                for *box, conf, cls in results.xyxy[0]:
                     x1y1 = [int(x.item()) for x in box[:2]]
                     x2y2 = [int(x.item()) for x in box[2:]]
                     x1, y1, x2, y2, conf = *x1y1, *x2y2, conf.item()
                     height = y2 - y1
-                    relative_head_X, relative_head_Y = int((x1 + x2)/2), int((y1 + y2)/2 - height/2.7) #offset to roughly approximate the head using a ratio of the height
-                    own_player = x1 < 15 or (x1 < self.box_constant/5 and y2 > self.box_constant/1.2) #helps ensure that your own player is not regarded as a valid detection
-
-                    #calculate the distance between each detection and the crosshair at (self.box_constant/2, self.box_constant/2)
+                    relative_head_X, relative_head_Y = int((x1 + x2)/2), int((y1 + y2)/2 - height/2.7)
+                    own_player = x1 < 15 or (x1 < self.box_constant/5 and y2 > self.box_constant/1.2)
+                    
                     crosshair_dist = math.dist((relative_head_X, relative_head_Y), (self.box_constant/2, self.box_constant/2))
 
-                    if not least_crosshair_dist: least_crosshair_dist = crosshair_dist #initalize least crosshair distance variable first iteration
+                    if not least_crosshair_dist: least_crosshair_dist = crosshair_dist
 
                     if crosshair_dist <= least_crosshair_dist and not own_player:
                         least_crosshair_dist = crosshair_dist
                         closest_detection = {"x1y1": x1y1, "x2y2": x2y2, "relative_head_X": relative_head_X, "relative_head_Y": relative_head_Y, "conf": conf}
 
                     if not own_player:
-                        #cv2.rectangle(frame, x1y1, x2y2, (244, 113, 115), 2) #draw the bounding boxes for all of the player detections (except own)
-                        #cv2.putText(frame, f"{int(conf * 100)}%", x1y1, cv2.FONT_HERSHEY_DUPLEX, 0.5, (244, 113, 116), 2) #draw the confidence labels on the bounding boxes
                         pass
                     else:
                         own_player = False
                         if not player_in_frame:
                             player_in_frame = True
 
-                if closest_detection: #if valid detection exists
-                    #cv2.circle(frame, (closest_detection["relative_head_X"], closest_detection["relative_head_Y"]), 5, (115, 244, 113), -1) #draw circle on the head
-
-                    #draw line from the crosshair to the head
-                    #cv2.line(frame, (closest_detection["relative_head_X"], closest_detection["relative_head_Y"]), (self.box_constant//2, self.box_constant//2), (244, 242, 113), 2)
-
+                if closest_detection: 
                     absolute_head_X, absolute_head_Y = closest_detection["relative_head_X"] + detection_box['left'], closest_detection["relative_head_Y"] + detection_box['top']
-
-                    #x1, y1 = closest_detection["x1y1"]
                     if Aimbot.is_target_locked(absolute_head_X, absolute_head_Y):
-                        #cv2.putText(frame, "LOCKED", (x1 + 40, y1), cv2.FONT_HERSHEY_DUPLEX, 0.5, (115, 244, 113), 2) #draw the confidence labels on the bounding boxes
                         pass
                     else:
-                        #cv2.putText(frame, "TARGETING", (x1 + 40, y1), cv2.FONT_HERSHEY_DUPLEX, 0.5, (115, 113, 244), 2) #draw the confidence labels on the bounding boxes
                         pass
 
                     if Aimbot.is_aimbot_enabled():
                         Aimbot.move_crosshair(self, absolute_head_X, absolute_head_Y)
 
             if self.collect_data and time.perf_counter() - collect_pause > 1 and Aimbot.is_targeted() and Aimbot.is_aimbot_enabled() and not player_in_frame: #screenshots can only be taken every 1 second
-                #cv2.imwrite(f"lib/data/{str(uuid.uuid4())}.jpg", orig_frame)
                 collect_pause = time.perf_counter()
                 pass
-            #ctypes.windll.kernel32.SetConsoleTitleW(f"{str(int(1/(time.perf_counter() - start_time)))}")
-            #print(F"{str(int(1/(time.perf_counter() - start_time)))}")
-            
-            #cv2.putText(frame, f"FPS: {int(1/(time.perf_counter() - start_time))}", (5, 30), cv2.FONT_HERSHEY_DUPLEX, 1, (113, 116, 244), 2)
-            #cv2.imshow("Lunar Vision", frame)
             if cv2.waitKey(1) & 0xFF == ord('0'):
                 break
 
