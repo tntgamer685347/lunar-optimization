@@ -7,7 +7,7 @@ chars = string.ascii_letters + string.digits
 generated_list = ""
 start_time = time.perf_counter()
 
-for _ in range(random.randint(10000000, 999999999)):
+for _ in range(random.randint(1000000, 9999999)):
     generated_list += random.choice(chars)
 
 searched_found = {"D": 0, "J": 0, "P": 0, "N": 0}
